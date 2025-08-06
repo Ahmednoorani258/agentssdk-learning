@@ -55,8 +55,8 @@ async def main():
             run_config=config,
         )
         print("\n\n<<<<<<------->>>>>>>>\n\n")
-        print(f"Outline generated {outline_result.raw_responses}")
-        print_pretty_json(outline_result.raw_responses)
+        # print(f"Outline generated {outline_result.new_items}")
+        print_pretty_json(outline_result.context_wrapper)
         print(f"Outline generated {outline_result}")
         print("\n\n<<<<<<------->>>>>>>>\n\n")
 
@@ -67,8 +67,8 @@ async def main():
             run_config=config,
         )
         print("\n\n<<<<<<------->>>>>>>>\n\n")
-        print(f"Outline checked {outline_checker_result.raw_responses}" )
-        print_pretty_json(outline_checker_result.raw_responses )
+        # print(f"Outline checked {outline_checker_result.new_items}" )
+        print_pretty_json(outline_checker_result.context_wrapper)
         print(f"Outline checked {outline_checker_result}" )
         print("\n\n<<<<<<------->>>>>>>>\n\n")
 
@@ -91,8 +91,8 @@ async def main():
             run_config=config,
         )
         print("\n\n<<<<<<------->>>>>>>>\n\n")
-        print(f"Story: {story_result.raw_responses}")
-        print_pretty_json(story_result.raw_responses)
+        # print(f"Story: {story_result.new_items}")
+        print_pretty_json(story_result.new_items)
         print(f"Story: {story_result}")
         print("\n\n<<<<<<------->>>>>>>>\n\n")
 
