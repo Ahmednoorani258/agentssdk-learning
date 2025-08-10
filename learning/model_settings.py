@@ -1,6 +1,9 @@
 from setupconfg import config
 from agents import Agent, Runner,ModelSettings, function_tool,enable_verbose_stdout_logging
-# enable_verbose_stdout_logging()
+from openai.types import Reasoning 
+
+from pretty_print import print_pretty_json
+enable_verbose_stdout_logging()
 
 # <<<<<<<<<<<<<___________Model Setting_________________________>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -102,16 +105,47 @@ sequential_agent = Agent(
 focused_agent = Agent(
     name="Focused",
     model_settings=ModelSettings(
-        top_p=0.3,              # Use only top 30% of vocabulary
-        frequency_penalty=0.5,   # Avoid repeating words
-        presence_penalty=0.3     # Encourage new topics
+        # top_p=1,              # Use only top 30% of vocabulary
+        # frequency_penalty=0.5,   # Avoid repeating words
+        # presence_penalty=0.3,     # Encourage new topics
+        # max_tokens=100
     ),
     
 )
 
-def main():
-    res = Runner.run_sync(focused_agent, "what is the weather of karachi pakistan also what is 2+2 and answer this in german and english",run_config=config,)
+
+# <<<<<<<<<<<<<___________model setting( to_json_dict(), resolve(), truncation, reasoning, metadata, store, include_usage, response_include, extra_query, extra_body, extra_headers, extra_args,  )
+# base_Settings = ModelSettings(
+#     max_tokens=50,
+# )
+
+# check_agent = Agent(
+#     name="Check Agent",
+#     instructions="You are a checking agent.",
+#     model_settings=base_Settings.resolve(
+#         ModelSettings(
+#         temperature=0.5,
+#         max_tokens=100,
+#         )
+#     )   
+# )
+# _____________________>>>>>>>>>>>>>>>>>>>>>>>>>
+
+
+check_agent = Agent(
+    name="Check Agent",
+    instructions="think about the query and provide a detailed response.",  
+    model_settings=ModelSettings(
+        reasoning=Reasoning(effort="high")
+    )
     
+)
+
+def main():
+    uinput = input("Enter your query: ")
+    res = Runner.run_sync(check_agent,uinput,run_config=config,)
+    print_pretty_json(check_agent.model_settings.to_json_dict())
+    # print_pretty_json(check_agent.model_settings)
     print(res.final_output)
     
 if __name__ == "__main__":
