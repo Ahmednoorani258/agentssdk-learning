@@ -1,9 +1,6 @@
 from __future__ import annotations
-
 import asyncio
-
 from pydantic import BaseModel
-
 from agents import (
     Agent,
     GuardrailFunctionOutput,
@@ -13,6 +10,7 @@ from agents import (
     TResponseInputItem,
     input_guardrail,
 )
+from pretty_print import print_pretty_json
 from setupconfg import config
 
 """
@@ -30,15 +28,15 @@ If the guardrail trips, we'll respond with a refusal message.
 
 
 ### 1. An agent-based guardrail that is triggered if the user is asking to do math homework
-class MathHomeworkOutput(BaseModel):
+class CustomerSupportOutput(BaseModel):
     reasoning: str
-    is_math_homework: bool
+    is_not_customer_support_query: bool
 
 
 guardrail_agent = Agent(
     name="Guardrail check",
-    instructions="Check if the user is asking you to do their math homework.",
-    output_type=MathHomeworkOutput,
+    instructions="Check that user only ask about customer support issues and its related queries.",
+    output_type=CustomerSupportOutput,
 )
 
 
@@ -47,19 +45,17 @@ async def math_guardrail(
     context: RunContextWrapper[None], agent: Agent, input: str | list[TResponseInputItem]
 ) -> GuardrailFunctionOutput:
     """This is an input guardrail function, which happens to call an agent to check if the input
-    is a math homework question.
+    is only related to customer support reltated queries.
     """
     result = await Runner.run(guardrail_agent, input, context=context.context,run_config=config)
-    final_output = result.final_output_as(MathHomeworkOutput)
+    final_output = result.final_output_as(CustomerSupportOutput)
 
     return GuardrailFunctionOutput(
         output_info=final_output,
-        tripwire_triggered=final_output.is_math_homework,
+        tripwire_triggered=final_output.is_not_customer_support_query,
     )
 
-
 ### 2. The run loop
-
 
 async def main():
     agent = Agent(
@@ -82,9 +78,17 @@ async def main():
         try:
             result = await Runner.run(agent, input_data,run_config=config)
             print(result.final_output)
+            print("\n\n<<<<<<<<<<<<__________________Input Guardrail Result_____________________________>>>>>>>>>>\n\n")
+            print_pretty_json(result.input_guardrail_results)
+            print("\n\n<<<<<<<<<<<<__________________NewItems_____________________________>>>>>>>>>>\n\n")
+            print_pretty_json(result.new_items)
+            print("\n\n<<<<<<<<<<<<__________________Raw Response_____________________________>>>>>>>>>>\n\n")
+            print_pretty_json(result.raw_responses)
+            print("\n\n<<<<<<<<<<<<__________________history_____________________________>>>>>>>>>>\n\n")
+            print_pretty_json(result.to_input_list())
             # If the guardrail didn't trigger, we use the result as the input for the next run
             input_data = result.to_input_list()
-        except InputGuardrailTripwireTriggered:
+        except InputGuardrailTripwireTriggered as e:
             # If the guardrail triggered, we instead add a refusal message to the input
             message = "Sorry, I can't help you with your math homework."
             print(message)
@@ -94,7 +98,12 @@ async def main():
                     "content": message,
                 }
             )
-
+            print("\n\n<<<<<<<<<<<<__________________Input Data_____________________________>>>>>>>>>>\n\n")
+            print_pretty_json(input_data)
+            print("\n\n<<<<<<<<<<<<__________________agent_____________________________>>>>>>>>>>\n\n")
+            print_pretty_json(agent)
+            print("\n\n<<<<<<<<<<<<__________________Error_____________________________>>>>>>>>>>\n\n")
+            print_pretty_json(e)
     # Sample run:
     # Enter a message: What's the capital of California?
     # The capital of California is Sacramento.
