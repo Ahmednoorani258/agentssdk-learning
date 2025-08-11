@@ -2,8 +2,8 @@ import asyncio
 from pydantic import BaseModel
 from agents import Agent, Runner, trace
 from setupconfg import config
-from dotenv import load_dotenv
 from pretty_print import print_pretty_json
+from dotenv import load_dotenv
 import os
 load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")

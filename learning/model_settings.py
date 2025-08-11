@@ -1,8 +1,13 @@
 from setupconfg import config
-from agents import Agent, Runner,ModelSettings, function_tool,enable_verbose_stdout_logging
+from agents import Agent, Runner,ModelSettings, trace, function_tool,enable_verbose_stdout_logging
 from openai.types import Reasoning 
-
 from pretty_print import print_pretty_json
+
+from dotenv import load_dotenv
+import os
+load_dotenv()
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+
 enable_verbose_stdout_logging()
 
 # <<<<<<<<<<<<<___________Model Setting_________________________>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -129,15 +134,31 @@ focused_agent = Agent(
 #         )
 #     )   
 # )
-# _____________________>>>>>>>>>>>>>>>>>>>>>>>>>
 
+# reasoning
+
+#  check_agent = Agent(
+#     name="Check Agent",
+#     instructions="think about the query and provide a detailed response.",  
+#     model_settings=ModelSettings(
+#         reasoning=Reasoning(effort="high")
+#     )
+    
+# )
+# model_settings=ModelSettings(
+    #   metadata=({"experiment": "A/B_test_3", "user_id": "1234"}
+    # )) 
+    
+# model_settings=ModelSettings(
+#     response_include=["logprobs", "tool_calls"]
+# )
+# 
+# _____________________>>>>>>>>>>>>>>>>>>>>>>>>>
 
 check_agent = Agent(
     name="Check Agent",
     instructions="think about the query and provide a detailed response.",  
-    model_settings=ModelSettings(
-        reasoning=Reasoning(effort="high")
-    )
+    
     
 )
 
@@ -145,8 +166,8 @@ def main():
     uinput = input("Enter your query: ")
     res = Runner.run_sync(check_agent,uinput,run_config=config,)
     print_pretty_json(check_agent.model_settings.to_json_dict())
-    # print_pretty_json(check_agent.model_settings)
-    print(res.final_output)
+    print_pretty_json(res.raw_responses)
+    print(f"<<<---response--->>> {res}")
     
 if __name__ == "__main__":
     main()
