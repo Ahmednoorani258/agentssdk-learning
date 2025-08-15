@@ -9,13 +9,6 @@ from setupconfg import config
 class UserContext:
     username: str
     email: str | None = None
-
-@function_tool()
-async def search(local_context: RunContextWrapper[UserContext], query: str) -> str:
-    import time
-    time.sleep(30)  # Simulating a delay for the search operation
-    return "No results found."
-
 async def special_prompt(special_context: RunContextWrapper[UserContext], agent: Agent[UserContext]) -> str:
     # who is user?
     # which agent
@@ -25,7 +18,6 @@ async def special_prompt(special_context: RunContextWrapper[UserContext], agent:
 math_agent: Agent = Agent(
     name="Genius",
     instructions=special_prompt,
-    tools=[search]
 )
 # [{"role": "system", "content": "..."}, {"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
 
