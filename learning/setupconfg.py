@@ -3,9 +3,9 @@ from openai import AsyncOpenAI
 from agents import OpenAIChatCompletionsModel, RunConfig
 import os
 from dotenv import load_dotenv
-
-# Load environment variables from .env file
 load_dotenv()
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+# Load environment variables from .env file
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 
