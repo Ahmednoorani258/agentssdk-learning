@@ -1,97 +1,50 @@
 import os
-from openai import AsyncOpenAI
-from agents import Agent, Runner, AsyncOpenAI,OpenAIChatCompletionsModel, set_default_openai_api ,set_default_openai_client,trace,set_tracing_disabled, set_trace_processors
-from agents.tracing.processor_interface import TracingProcessor
-from agents.run import RunConfig
-from dotenv import load_dotenv
-import asyncio
-from pprint import pprint
+from dotenv import load_dotenv, find_dotenv
+from agents import Agent, Runner, AsyncOpenAI, OpenAIChatCompletionsModel, function_tool, StopAtTools
 
-load_dotenv()
+_: bool = load_dotenv(find_dotenv())
 
-BASE_URL = os.getenv ("https://generativelanguage.googleapis.com/v1beta/openai/")
-API_KEY = os.getenv("GEMINI_API_KEY")
-MODEL_NAME = "gemini-2.0-flash"
+# ONLY FOR TRACING
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY", "")
 
-# if not BASE_URL or not API_KEY or not MODEL_NAME:
-#     raise ValueError(
-#         "Please set EXAMPLE_BASE_URL, EXAMPLE_API_KEY, EXAMPLE_MODEL_NAME via env var or code."
-#     )
+gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
 
-client=AsyncOpenAI(
-    base_url=BASE_URL,
-    api_key=API_KEY,
+# 1. Which LLM Service?
+external_client: AsyncOpenAI = AsyncOpenAI(
+    api_key=gemini_api_key,
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
 )
 
-set_default_openai_client(client=client, use_for_tracing=True)
-set_default_openai_api("chat_completions")
-
-
-class LocalTraceProcessor(TracingProcessor):
-  def _init_(self):
-    self.traces=[]
-    self.spans=[]
-
-  def on_trace_start(self, trace):
-    self.traces.append(trace)
-    print("trace_start",{trace.trace_id})
-
-  def on_trace_end(self, trace):
-    print("trace_end",{trace.export})
-
-  def on_span_start(self, span):
-        self.spans.append(span)
-        print(f"Span started: {span.span_id}")
-        print(f"Span details: ")
-        pprint(span.export())
-
-  def on_span_end(self, span):
-        print(f"Span ended: {span.span_id}")
-        print(f"Span details:")
-        pprint(span.export())  
-
-  def force_flush(self):
-        print("Forcing flush of trace data")
-
-  def shutdown(self):
-        print("=======Shutting down trace processor========")
-        # Print all collected trace and span data
-        print("Collected Traces:")
-        for trace in self.traces:
-            print(trace.export())
-        print("Collected Spans:")
-        for span in self.spans:
-            print(span.export())
-
-
-# if not BASE_URL or not API_KEY or not MODEL_NAME:
-#     raise ValueError("Please set EXAMPLE_BASE_URL, EXAMPLE_API_KEY, EXAMPLE_MODEL_NAME via env var or code.")
-
-# Create OpenAI client
-client = AsyncOpenAI(
-    base_url=BASE_URL,
-    api_key=API_KEY,
+# 2. Which LLM Model?
+llm_model: OpenAIChatCompletionsModel = OpenAIChatCompletionsModel(
+    model="gemini-2.5-flash",
+    openai_client=external_client
 )
 
-# Configure the client
-set_default_openai_client(client=client, use_for_tracing=True)
-set_default_openai_api("chat_completions")
+@function_tool
+def get_weather(city: str) -> str:
+    """A simple function to get the weather for a user."""
+    return f"Sunny"
 
-# Set up the custom trace processor
-local_processor = LocalTraceProcessor()
-set_trace_processors([local_processor])
+@function_tool
+def get_travel_plan(city: str) -> str:
+    """Plan Travel for your city"""
+    return f"Travel Plan is not available"
 
 
+base_agent: Agent = Agent(
+    name="WeatherAgent",
+    instructions="You are a helpful assistant.",
+    model=llm_model,
+    tools=[get_weather, get_travel_plan],
+    tool_use_behavior=StopAtTools(stop_at_tool_names=["get_travel_plan"])
+)
 
-# Example function to run an agent and collect traces
-async def main():
-    agent = Agent(name="Example Agent", instructions="Perform example tasks.", model=MODEL_NAME)
+# res = Runner.run_sync(base_agent, "What is weather in Lahore")
+res = Runner.run_sync(base_agent, "what is weather in lahore ")
+print(res.final_output)
 
-    with trace("Example workflow"):
-        first_result = await Runner.run(agent, "Start the task")
-        second_result = await Runner.run(agent, f"Rate this result: {first_result.final_output}")
-        print(f"Result: {first_result.final_output}")
-        print(f"Rating: {second_result.final_output}")
+# 1. NLP answer = loop finished
+# 2. tool call = loop continue - loop finish
 
-# Run the main function
-asyncio.run(main())
+# tool call = ASK Question from Human = loop pause
