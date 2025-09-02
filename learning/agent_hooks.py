@@ -1,94 +1,98 @@
-from agents import Agent,RunHooks, Runner,  function_tool
+# Imports
+import asyncio
 import random
-import time
-from datetime import datetime
+from pydantic import BaseModel
+from typing import Any
+from agents import Agent, RunContextWrapper, AgentHooks, Runner, Tool,function_tool
 from setupconfg import config
 
-class DetailedAgentHooks(RunHooks):
-    def __init__(self):
-        self.start_time = None
-        self.llm_calls = 0
-        self.tool_calls = 0
-    
-    async def on_agent_start(self, context, agent):
-        self.start_time = time.time()
-        self.llm_calls = 0
-        self.tool_calls = 0
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        print(f"🕘 [{timestamp}] {agent.name} became active")
-    
+class CustomAgentHooks(AgentHooks):
+    def __init__(self, display_name: str):
+        self.event_counter = 0
+        self.display_name = display_name
+
+    async def on_start(self, context: RunContextWrapper, agent: Agent) -> None:
+        self.event_counter += 1
+        print(f"### ({self.display_name}) {self.event_counter}: Agent {agent.name} started")
+
+    async def on_end(self, context: RunContextWrapper, agent: Agent, output: Any) -> None:
+        self.event_counter += 1
+        print(
+            f"### ({self.display_name}) {self.event_counter}: Agent {agent.name} ended with output {output}"
+        )
+
+    async def on_handoff(self, context: RunContextWrapper, agent: Agent, source: Agent) -> None:
+        self.event_counter += 1
+        print(
+            f"### ({self.display_name}) {self.event_counter}: Agent {source.name} handed off to {agent.name}"
+        )
+
+    async def on_tool_start(self, context: RunContextWrapper, agent: Agent, tool: Tool) -> None:
+        self.event_counter += 1
+        print(
+            f"### ({self.display_name}) {self.event_counter}: Agent {agent.name} started tool {tool.name}"
+        )
+
+    async def on_tool_end(
+        self, context: RunContextWrapper, agent: Agent, tool: Tool, result: str
+    ) -> None:
+        self.event_counter += 1
+        print(
+            f"### ({self.display_name}) {self.event_counter}: Agent {agent.name} ended tool {tool.name} with result {result}"
+        )
+     
     async def on_llm_start(self, context, agent, system_prompt, input_items):
-        self.llm_calls += 1
-        print(f"📞 LLM Call #{self.llm_calls}: {agent.name} asking AI for guidance")
-        print(f"   Input: {len(input_items)} items to think about")
+        print(f"📞 SYSTEM: {agent.name} is thinking...")
     
     async def on_llm_end(self, context, agent, response):
-        print(f"🧠✨ LLM Call #{self.llm_calls} completed")
-        print(f"   AI response length: {len(str(response))} characters")
-    
-    async def on_tool_start(self, context, agent, tool):
-        self.tool_calls += 1
-        print(f"🔨 Tool #{self.tool_calls}: {agent.name} using {tool.name}")
-    
-    async def on_tool_end(self, context, agent, tool, result):
-        print(f"✅🔨 Tool #{self.tool_calls} completed")
-        print(f"   Result preview: {str(result)[:50]}...")
-    
-    async def on_handoff(self, context, agent, source):
-        print(f"🏃‍♂️➡️🏃‍♀️ {agent.name} received work from {source.name}")
-        print(f"   Work is being transferred due to specialization")
-    
-    async def on_agent_end(self, context, agent, output):
-        duration = time.time() - self.start_time if self.start_time else 0
-        print(f"✅ {agent.name} FINISHED in {duration:.2f} seconds")
-        print(f"📊 Total: {self.llm_calls} AI calls, {self.tool_calls} tool uses")
-        print(f"🎯 Final result: {str(output)[:100]}...")
+        print(f"🧠✨ SYSTEM: {agent.name} finished thinking")
 
-
-
-
-@function_tool("random_number")
+@function_tool
 def random_number(max: int) -> int:
-    """Generate a random number up to the provided max."""
+    """
+    Generate a random number up to the provided maximum.
+    """
     return random.randint(0, max)
 
 
-@function_tool("multiply_by_two")
+@function_tool
 def multiply_by_two(x: int) -> int:
-    """Return x times two."""
+    """Simple multiplication by two."""
     return x * 2
+
+
+class FinalResult(BaseModel):
+    number: int
 
 
 multiply_agent = Agent(
     name="Multiply Agent",
     instructions="Multiply the number by 2 and then return the final result.",
     tools=[multiply_by_two],
+    hooks=CustomAgentHooks(display_name="Multiply Agent"),
+
 )
 
 start_agent = Agent(
     name="Start Agent",
-    instructions="Generate a random number. If it's even, stop. If it's odd, hand off to the multipler agent. give both the addition and multiplication",
+    instructions="Generate a random number. If it's even, stop. If it's odd, hand off to the multiply agent.",
     tools=[random_number],
     handoffs=[multiply_agent],
+    hooks=CustomAgentHooks(display_name="Start Agent"),
+
+
 )
 
-hooks = DetailedAgentHooks()
 
 async def main() -> None:
     user_input = input("Enter a max number: ")
-    ans = await Runner.run(
+    await Runner.run(
         start_agent,
-        hooks=hooks,
         input=f"Generate a random number between 0 and {user_input}.",
-        run_config=config
+        run_config=config,
     )
-
-    print(ans.final_output)
 
     print("Done!")
 
-
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())# Use it with your agent
-
+    asyncio.run(main())
