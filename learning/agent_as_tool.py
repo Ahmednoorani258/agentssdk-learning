@@ -1,7 +1,9 @@
 from agents import Agent, Runner, ModelSettings, function_tool, enable_verbose_stdout_logging
 from setupconfg import config, model
+from pretty_print import print_pretty_json
+
 # start small
-# enable_verbose_stdout_logging()
+# print_pretty_json(enable_verbose_stdout_logging())
 
 
 lowercase_agent = Agent(
